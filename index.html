@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>نظام مراقبة فنادق مكة المكرمة</title>
+  <!-- مكتبات خارجية -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.4.3/mapbox-gl-draw.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.4.3/mapbox-gl-draw.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .sidebar { position: absolute; right: 0; top: 0; bottom: 0; width: 400px; background: #2c3e50; color: white; overflow-y: auto; padding: 20px; z-index: 9999; }
+    .form-control, select, textarea { width: 100%; padding: 10px; margin: 5px 0; border-radius: 6px; border: none; }
+    button { padding: 10px; margin-top: 10px; width: 100%; border-radius: 6px; border: none; background: #3498db; color: white; font-weight: bold; cursor: pointer; }
+    .btn-group { display: flex; flex-direction: column; gap: 10px; }
+    .message-alert { margin-top: 10px; padding: 10px; border-radius: 6px; }
+    .success-message { background-color: #2ecc71; color: white; }
+    .error-message { background-color: #e74c3c; color: white; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="sidebar">
+    <h2>نظام مراقبة الفنادق</h2>
+    <input type="text" id="hotelName" class="form-control" placeholder="اسم الفندق" required>
+    <select id="issueType" class="form-control">
+      <option value="">نوع المشكلة</option>
+      <option>انقطاع الكهرباء</option>
+      <option>مشكلة التكييف</option>
+      <option>النظافة</option>
+    </select>
+    <select id="severity" class="form-control">
+      <option value="">درجة الخطورة</option>
+      <option>حرجة</option>
+      <option>عالية</option>
+      <option>متوسطة</option>
+      <option>منخفضة</option>
+    </select>
+    <input type="date" id="reportDate" class="form-control">
+    <textarea id="notes" class="form-control" placeholder="ملاحظات إضافية..."></textarea>
+    <button onclick="enableDrawMode()">تحديد الموقع على الخريطة</button>
+    <div class="btn-group">
+      <button onclick="exportToJSON()">📦 تصدير JSON</button>
+      <button onclick="generateReport()">📄 إنشاء PDF</button>
+      <button onclick="toggleHeatmap()">🔥 عرض الخريطة الحرارية</button>
+    </div>
+    <p>إجمالي البلاغات: <span id="totalReports">0</span></p>
+  </div>
+  <script>
+    const CONFIG = {
+      MAPBOX_TOKEN: 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw',
+      MECCA_CENTER: [39.8264, 21.4225],
+      DEFAULT_ZOOM: 13
+    };
+
+    mapboxgl.accessToken = CONFIG.MAPBOX_TOKEN;
+    let map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: CONFIG.MECCA_CENTER,
+      zoom: CONFIG.DEFAULT_ZOOM
+    });
+
+    let drawMode = false;
+    let reports = [];
+    let markers = new Map();
+    let reportIdCounter = 1;
+    let heatmapVisible = false;
+    let heatLayerId = 'heatmap-reports';
+
+    map.on('click', (e) => {
+      if (drawMode) {
+        addReport(e.lngLat);
+        drawMode = false;
+        map.getCanvas().style.cursor = '';
+      }
+    });
+
+    function enableDrawMode() {
+      if (!validateForm()) return;
+      drawMode = true;
+      map.getCanvas().style.cursor = 'crosshair';
+    }
+
+    function validateForm() {
+      const fields = ['hotelName', 'issueType', 'severity', 'reportDate'];
+      for (let id of fields) {
+        if (!document.getElementById(id).value) {
+          showMessage('يرجى ملء جميع الحقول المطلوبة', 'error');
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function addReport(lngLat) {
+      const r = {
+        id: reportIdCounter++,
+        hotel: hotelName.value,
+        issue: issueType.value,
+        severity: severity.value,
+        date: reportDate.value,
+        note: notes.value,
+        lng: lngLat.lng,
+        lat: lngLat.lat
+      };
+      reports.push(r);
+      addMarker(r);
+      updateStats();
+      localStorage.setItem('hotelReports', JSON.stringify(reports));
+      showMessage('تم حفظ البلاغ بنجاح', 'success');
+      document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+    }
+
+    function addMarker(r) {
+      const marker = new mapboxgl.Marker().setLngLat([r.lng, r.lat])
+        .setPopup(new mapboxgl.Popup().setHTML(`<strong>${r.hotel}</strong><br>نوع المشكلة: ${r.issue}<br>الخطورة: ${r.severity}<br>التاريخ: ${r.date}`))
+        .addTo(map);
+      markers.set(r.id, marker);
+    }
+
+    function updateStats() {
+      document.getElementById('totalReports').innerText = reports.length;
+    }
+
+    function showMessage(text, type) {
+      const msg = document.createElement('div');
+      msg.className = 'message-alert ' + (type === 'error' ? 'error-message' : 'success-message');
+      msg.textContent = text;
+      document.querySelector('.sidebar').appendChild(msg);
+      setTimeout(() => msg.remove(), 4000);
+    }
+
+    function exportToJSON() {
+      const blob = new Blob([JSON.stringify(reports, null, 2)], { type: 'application/json' });
+      saveAs(blob, 'hotel-reports.json');
+    }
+
+    function generateReport() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text(\"تقرير بلاغات الفنادق\", 10, 10);
+      reports.forEach((r, i) => {
+        doc.text(`${i + 1}) ${r.hotel} - ${r.issue} (${r.severity})`, 10, 20 + i * 10);
+      });
+      doc.save(\"hotel-report.pdf\");
+    }
+
+    function toggleHeatmap() {
+      if (map.getLayer(heatLayerId)) {
+        map.removeLayer(heatLayerId);
+        map.removeSource(heatLayerId);
+        heatmapVisible = false;
+      } else {
+        const features = reports.map(r => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [r.lng, r.lat] }
+        }));
+        map.addSource(heatLayerId, {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features }
+        });
+        map.addLayer({
+          id: heatLayerId,
+          type: 'heatmap',
+          source: heatLayerId,
+          paint: {
+            'heatmap-weight': 1,
+            'heatmap-intensity': 1,
+            'heatmap-radius': 20,
+            'heatmap-opacity': 0.8
+          }
+        });
+        heatmapVisible = true;
+      }
+    }
+
+    window.onload = () => {
+      document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+      const saved = localStorage.getItem('hotelReports');
+      if (saved) {
+        reports = JSON.parse(saved);
+        reports.forEach(r => addMarker(r));
+        updateStats();
+      }
+    };
+  </script>
+</body>
+</html>
