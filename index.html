@@ -1,1108 +1,812 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="utf-8" />
-    <title>نظام مراقبة فنادق مكة المكرمة</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
-    <!-- Mapbox GL JS -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-    
-    <!-- Mapbox GL Draw -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.css" rel="stylesheet" />
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.js"></script>
-    
-    <!-- Cairo Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
-    
-    <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            --success-gradient: linear-gradient(135deg, #38b2ac 0%, #4fd1c7 100%);
-            --warning-gradient: linear-gradient(135deg, #ed8936 0%, #f6ad55 100%);
-            --danger-gradient: linear-gradient(135deg, #e53e3e 0%, #fc8181 100%);
-            --critical-gradient: linear-gradient(135deg, #9f2a7c 0%, #d53f8c 100%);
-            --glass-bg: rgba(255, 255, 255, 0.15);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.1);
-            --shadow-heavy: 0 12px 40px rgba(0, 0, 0, 0.3);
-            --border-radius: 16px;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام مراقبة فنادق مكة المكرمة</title>
+  
+  <!-- Mapbox GL JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.css" rel="stylesheet">
+  
+  <!-- Mapbox GL Draw -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.4.3/mapbox-gl-draw.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.4.3/mapbox-gl-draw.min.css" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <!-- FileSaver -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  <style>
+    :root {
+      --primary-color: #2c5aa0;
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-color: #34495e;
+      --accent-color: #3498db;
+      --success-color: #27ae60;
+      --warning-color: #f39c12;
+      --danger-color: #e74c3c;
+      --info-color: #17a2b8;
+      --light-color: #ecf0f1;
+      --dark-color: #2c3e50;
+      --sidebar-width: 400px;
+      --border-radius: 12px;
+      --box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        body {
-            font-family: 'Cairo', sans-serif;
-            background: var(--secondary-gradient);
-            color: #333;
-            overflow: hidden;
-            font-size: 14px;
-            line-height: 1.6;
-        }
+    @media (forced-colors: active) {
+      :root {
+        --primary-color: ButtonText;
+        --secondary-color: ButtonFace;
+        --accent-color: Highlight;
+        --success-color: ButtonText;
+        --warning-color: ButtonText;
+        --danger-color: ButtonText;
+        --info-color: ButtonText;
+        --light-color: Canvas;
+        --dark-color: CanvasText;
+      }
+    }
 
-        /* Loading Screen */
-        #loadingOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(30,60,114,0.95) 0%, rgba(42,82,152,0.95) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            backdrop-filter: blur(10px);
-        }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        .loading-content {
-            text-align: center;
-            color: white;
-        }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      color: var(--dark-color);
+      overflow: hidden;
+      height: 100vh;
+    }
 
-        .spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-top: 4px solid #4fd1c7;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
+    .container {
+      display: flex;
+      height: 100vh;
+      position: relative;
+    }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--primary-gradient);
+      color: white;
+      overflow-y: auto;
+      transition: var(--transition);
+      box-shadow: var(--box-shadow);
+      z-index: 1000;
+    }
 
-        .loading-text {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
+    .sidebar-header {
+      padding: 25px 20px;
+      background: rgba(0,0,0,0.2);
+      text-align: center;
+      position: relative;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+    }
 
-        /* Map Container */
-        #map {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 100%;
-        }
+    .sidebar-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 1px, transparent 1px),
+                  radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 1px, transparent 1px),
+                  radial-gradient(circle at 40% 40%, rgba(255,255,255,0.1) 0.5px, transparent 0.5px);
+      opacity: 0.3;
+    }
 
-        /* Title Panel */
-        #titlePanel {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 12px 24px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--border-radius);
-            backdrop-filter: blur(20px);
-            box-shadow: var(--shadow-heavy);
-            color: white;
-            z-index: 1001;
-            font-size: 18px;
-            font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            transition: var(--transition);
-        }
+    .sidebar-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
 
-        /* Controls */
-        .controls {
-            position: absolute;
-            top: 80px;
-            left: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            z-index: 1001;
-        }
+    .sidebar-header p {
+      opacity: 0.9;
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 1;
+    }
 
-        .controls .btn {
-            padding: 10px 16px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-weight: 600;
-            color: white;
-            font-size: 13px;
-            backdrop-filter: blur(20px);
-            transition: var(--transition);
-            box-shadow: var(--shadow-light);
-        }
+    .sidebar-content {
+      padding: 20px;
+    }
 
-        .controls .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-heavy);
-            background: rgba(255,255,255,0.25);
-        }
+    .section {
+      margin-bottom: 30px;
+      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      border-radius: var(--border-radius);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      transition: var(--transition);
+    }
 
-        .controls .btn.active {
-            background: var(--primary-gradient);
-            color: white;
-        }
+    .section:hover {
+      background: rgba(255,255,255,0.15);
+      transform: translateY(-2px);
+    }
 
-        .controls input[type="color"] {
-            width: 45px;
-            height: 45px;
-            padding: 4px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            cursor: pointer;
-        }
+    .section h2 {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-        /* Panels */
-        .panels {
-            position: absolute;
-            top: 150px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            z-index: 999;
-            max-height: calc(100vh - 180px);
-            overflow-y: auto;
-        }
+    .section h2 i {
+      color: var(--warning-color);
+    }
 
-        .glass-panel {
-            backdrop-filter: blur(20px);
-            background: rgba(255,255,255,0.95);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: var(--border-radius);
-            padding: 24px;
-            box-shadow: var(--shadow-heavy);
-            color: #333;
-            min-width: 320px;
-            transition: var(--transition);
-        }
+    .form-group {
+      margin-bottom: 15px;
+    }
 
-        /* Details Panel */
-        #detailsPanel {
-            position: absolute;
-            top: 80px;
-            right: 50%;
-            transform: translateX(50%);
-            width: 350px;
-            max-width: 90%;
-            display: none;
-            z-index: 1001;
-        }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      opacity: 0.9;
+    }
 
-        #detailsPanel h3 {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 18px;
-            font-weight: 700;
-            color: #333;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e2e8f0;
-        }
+    .form-control {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: var(--border-radius);
+      background: rgba(0,0,0,0.2);
+      color: white;
+      font-size: 14px;
+      transition: var(--transition);
+    }
 
-        #detailsPanel ul {
-            list-style: none;
-            padding: 0;
-        }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--warning-color);
+      background: rgba(0,0,0,0.3);
+      box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.3);
+    }
 
-        #detailsPanel ul li {
-            margin-bottom: 12px;
-            font-size: 14px;
-            padding: 8px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
+    .form-control::placeholder {
+      color: rgba(255,255,255,0.6);
+    }
 
-        #detailsPanel ul li strong {
-            color: #4a5568;
-            margin-left: 8px;
-        }
+    .form-control option {
+      background: var(--dark-color);
+      color: white;
+    }
 
-        .panel-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition);
+      text-align: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
 
-        .delete-btn, .close-btn {
-            flex: 1;
-            padding: 10px 16px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-weight: 600;
-            color: white;
-            cursor: pointer;
-            font-size: 13px;
-            transition: var(--transition);
-        }
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
 
-        .delete-btn {
-            background: var(--danger-gradient);
-        }
+    .btn:hover::before {
+      left: 100%;
+    }
 
-        .close-btn {
-            background: #6b7280;
-        }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--warning-color), #e67e22);
+      color: white;
+      box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+    }
 
-        /* Forms */
-        .form-group {
-            margin-bottom: 18px;
-        }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+    }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            color: #374151;
-            font-size: 13px;
-        }
+    .btn-success {
+      background: linear-gradient(135deg, var(--success-color), #2ecc71);
+      color: white;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+    }
 
-        .form-control {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: var(--border-radius);
-            background: white;
-            font-size: 14px;
-            color: #333;
-            transition: var(--transition);
-            font-family: 'Cairo', sans-serif;
-        }
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.6);
+    }
 
-        .form-control:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+    .btn-info {
+      background: linear-gradient(135deg, var(--info-color), #3498db);
+      color: white;
+      box-shadow: 0 4px 15px rgba(23, 162, 184, 0.4);
+    }
 
-        .btn {
-            width: 100%;
-            padding: 12px 20px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-weight: 600;
-            margin-bottom: 12px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: var(--transition);
-            font-family: 'Cairo', sans-serif;
-        }
+    .btn-info:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(23, 162, 184, 0.6);
+    }
 
-        .btn-primary {
-            background: var(--primary-gradient);
-            color: white;
-        }
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--secondary-color), #5d6d7e);
+      color: white;
+      box-shadow: 0 4px 15px rgba(52, 73, 94, 0.4);
+    }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-light);
-        }
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(52, 73, 94, 0.6);
+    }
 
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
+    .btn-block {
+      width: 100%;
+      margin-bottom: 10px;
+    }
 
-        .btn-secondary:hover {
-            background: #4b5563;
-            transform: translateY(-2px);
-        }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
 
-        /* Statistics */
-        .stats-header {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 16px;
-            font-weight: 700;
-            color: #333;
-        }
+    .stat-card {
+      background: rgba(0,0,0,0.2);
+      padding: 15px;
+      border-radius: var(--border-radius);
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: var(--transition);
+    }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
+    .stat-card:hover {
+      background: rgba(0,0,0,0.3);
+      transform: scale(1.05);
+    }
 
-        .stat-card {
-            background: white;
-            padding: 18px;
-            border-radius: var(--border-radius);
-            text-align: center;
-            border: 2px solid #f1f5f9;
-            color: #333;
-            transition: var(--transition);
-        }
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+      background: linear-gradient(45deg, var(--warning-color), #f1c40f);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
 
-        .stat-number {
-            font-size: 24px;
-            font-weight: 900;
-            color: #667eea;
-            margin-bottom: 4px;
-        }
+    .stat-label {
+      font-size: 0.8rem;
+      opacity: 0.8;
+    }
 
-        .stat-label {
-            font-size: 12px;
-            color: #6b7280;
-            font-weight: 600;
-        }
+    .search-container {
+      position: relative;
+      margin-bottom: 15px;
+    }
 
-        /* Markers */
-        .custom-marker {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: var(--shadow-heavy);
-            border: 3px solid rgba(255,255,255,0.9);
-            transition: var(--transition);
-        }
+    .search-container i {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      transition: var(--transition);
+    }
 
-        .custom-marker:hover {
-            transform: scale(1.15);
-        }
+    .search-container i:hover {
+      color: var(--warning-color);
+    }
 
-        .severity-low {
-            background: var(--success-gradient);
-        }
+    .message-alert {
+      padding: 12px 15px;
+      border-radius: var(--border-radius);
+      margin-bottom: 15px;
+      font-size: 14px;
+      animation: slideInDown 0.3s ease-out;
+    }
 
-        .severity-medium {
-            background: var(--warning-gradient);
-        }
+    .success-message {
+      background: rgba(39, 174, 96, 0.2);
+      border: 1px solid rgba(39, 174, 96, 0.5);
+      color: #2ecc71;
+    }
 
-        .severity-high {
-            background: var(--danger-gradient);
-        }
+    .error-message {
+      background: rgba(231, 76, 60, 0.2);
+      border: 1px solid rgba(231, 76, 60, 0.5);
+      color: #e74c3c;
+    }
 
-        .severity-critical {
-            background: var(--critical-gradient);
-        }
+    @keyframes slideInDown {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .panels {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                left: 20px;
-                max-height: 50vh;
-                flex-direction: row;
-                overflow-x: auto;
-            }
+    .map-container {
+      flex: 1;
+      position: relative;
+      height: 100vh;
+    }
 
-            .glass-panel {
-                min-width: 280px;
-                flex-shrink: 0;
-            }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
 
-            .controls {
-                flex-direction: column;
-                top: 120px;
-            }
-        }
-    </style>
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loading-content {
+      text-align: center;
+      color: white;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid var(--warning-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .mapboxgl-popup-content {
+      padding: 20px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      max-width: 300px;
+    }
+
+    .popup-hotel-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+
+    .popup-field {
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .popup-label {
+      font-weight: 600;
+      color: var(--secondary-color);
+    }
+
+    .severity-critical { color: var(--danger-color); }
+    .severity-high { color: #ff6b35; }
+    .severity-medium { color: var(--warning-color); }
+    .severity-low { color: var(--success-color); }
+
+    .popup-actions {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    /* التصميم المتجاوب */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        position: absolute;
+        transform: translateX(-100%);
+        z-index: 2000;
+      }
+      
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .container {
+        flex-direction: column;
+      }
+      
+      .map-container {
+        height: 100vh;
+      }
+    }
+
+    /* تحسينات إضافية */
+    .form-control:invalid {
+      border-color: var(--danger-color);
+    }
+
+    .form-control:valid {
+      border-color: var(--success-color);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn:disabled:hover {
+      transform: none !important;
+    }
+
+    /* انتقالات سلسة */
+    .section, .stat-card, .btn, .form-control {
+      transition: var(--transition);
+    }
+
+    /* تحسين الطباعة */
+    @media print {
+      .sidebar {
+        display: none;
+      }
+      
+      .map-container {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div id="loadingOverlay">
-        <div class="loading-content">
-            <div class="spinner"></div>
-            <div class="loading-text">جاري تحميل النظام...</div>
+  <div class="container">
+    <!-- الشريط الجانبي -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1><i class="fas fa-hotel"></i> مراقبة الفنادق</h1>
+        <p>مكة المكرمة - نظام متقدم</p>
+      </div>
+      
+      <div class="sidebar-content">
+        <!-- البحث -->
+        <div class="section">
+          <h2><i class="fas fa-search"></i> البحث السريع</h2>
+          <div class="search-container">
+            <input type="text" id="searchBox" class="form-control" placeholder="ابحث عن فندق أو نوع المشكلة...">
+            <i class="fas fa-search" onclick="searchHotel()"></i>
+          </div>
         </div>
-    </div>
 
-    <div id="map"></div>
-
-    <div id="titlePanel">
-        نظام مراقبة فنادق مكة المكرمة
-    </div>
-
-    <div class="controls">
-        <button id="togglePolygon" class="btn" title="رسم منطقة مضمضلع</button>
-        <button id="toggleLine" class="btn" title="ر<button id="toggleText" class="btn" title="إضافة نص">✏️ نص</button>
-        <input type="color" id="zoneColor" value="#667eea" title="لون المنطقة" />
-        <button id="clearZones" class="btn" title="مسح المناطق"></button>
-        <button id="toggleView" class="btn" title="تبديل العرض">>
-    </div>
-
-    <div id="detailsPanel" class="glass-panel">
-        فاصيل البلاغ</h3>
-        <ul>
-            <li><strong>d-hotel"></span></li>
-            > <span id="d-date"></span></li>
-            <li><strong>⚠️ المشكلة:</strong> <span id="d-issue"></span></li>
-            <li><strong</strong> <span id="d-severity"></span></li>
-            الإحداثيات:</strong> <span id="d-coords"></span></li>
-        </ul>
-        <div class="panel-buttons">
-            <button class="delete-btn" onclick="deleteReportذف</button>
-            <button class="close-btn" onclick="closeDetails()">❌ إغلاق</button>
+        <!-- الإحصائيات -->
+        <div class="section">
+          <h2><i class="fas fa-chart-bar"></i> الإحصائيات</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number" id="totalReports">0</div>
+              <div class="stat-label">إجمالي البلاغات</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="criticalReports">0</div>
+              <div class="stat-label">حرجة</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="highReports">0</div>
+              <div class="stat-label">عالية</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="mediumReports">0</div>
+              <div class="stat-label">متوسطة</div>
+            </div>
+          </div>
         </div>
-    </div>
 
-    <div class="panels">
-        <div class="glass-panel">
-            <h3 style="text-align: center; margin-bottom: 20px; color: #333;">➕ إضافة بلاغ جديد</h3>
+        <!-- إضافة بلاغ جديد -->
+        <div class="section">
+          <h2><i class="fas fa-plus-circle"></i> بلاغ جديد</h2>
+          <form id="reportForm">
+            <div class="form-group">
+              <label for="hotelName">اسم الفندق</label>
+              <input type="text" id="hotelName" class="form-control" placeholder="أدخل اسم الفندق" required>
+            </div>
             
             <div class="form-group">
-                <label for="hotelNameندق:</label>
-                <input id="hotelName" class="form-control" placeholder="أدخل اسم الفندق" />
-            </div>
-
-            <div class="form-group">
-                <label for="report
-                <input id="reportDate" type="date" class="form-control" />
-            </div>
-
-            <div class="form-group">
-                <label for="issueType">⚠️ نوع المشكلة:</label>
-                <select id="issueType" class="form-control">
-                    <option value="ضعف ضخ المياه</option>
-                <option value="❌ غير مربوط">❌ غير مربوط</option>
-                    <option value="⚫ انقطاع كامل">⚫ انقطاع كامل</option>
-                    <option value="لوبة</option>
-                    <option value="⚠️ مشاكل أخرى">⚠️ مشاكل أخرى</option>
-                </select>
-            </div>
-
-            <div class="form-group">جة الخطورة:</label>
-                <select id="severity" class="form-control">
-                    <option value="من</option>
-                    <option value="متوسط">>
-                    <option value="عالي</option>
-                    <option value="ع</option>
-                </select>
-            </div>
-
-            <button class="btn btn-primary" onclick="addReportMode()">
-                ➕ إضافة بلاغ على الخريطة
-            </button>
-
-            <button class="btn btn-secondary" onclick="exportReports()">
-                انات
-            </button>
-
-            <button class="btn btn-secondary" onclick="printباعة التقرير
-            </button>
-        </div>
-
-        <div class="glass-panel">
+              <label for="issueType">نوع المشكلة</label>
+              <select id="issueType" class="form-control" required>
+                <option value="">اختر نوع المشكلة</option>
+                <option value="انقطاع المياه">انقطاع المياه</option>
+                <option value="انقطاع الكهرباء">انقطاع الكهرباء</option>
+                <option value="مشاكل التكييف">مشاكل التكييف</option>
+                <option value="مشاكل النظافة">مشاكل النظافة</option>
+                <option value="مشاكل الخدمة">مشاكل الخدمة</option>
+                <option value="مشاكل الأمان">مشاكل الأمان</option>
+                <option value="ازدحام">ازدحام</option>
+                <option value="ضوضاء">ضوضاء</option>
+                <option value="أخرى">أخرى</option>
+              </select>
             </div>
             
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalIssues">0</div>
-                    <div class="stat-label">إجمالي البلاغات</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="criticalIssues">0</div>
-                    <div class="stat-label">الحالات الحرجة</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="todayIssues">0</div>
-                    <div class="stat-label">بلاغات اليوم</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="resolvedIssues">0</div>
-                    <div class="stat-label">المحلولة</div>
-                </div>
+            <div class="form-group">
+              <label for="severity">درجة الخطورة</label>
+              <select id="severity" class="form-control" required>
+                <option value="">اختر درجة الخطورة</option>
+                <option value="حرجة">حرجة</option>
+                <option value="عالية">عالية</option>
+                <option value="متوسطة">متوسطة</option>
+                <option value="منخفضة">منخفضة</option>
+              </select>
             </div>
+            
+            <div class="form-group">
+              <label for="reportDate">التاريخ</label>
+              <input type="date" id="reportDate" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="notes">ملاحظات إضافية</label>
+              <textarea id="notes" class="form-control" placeholder="أضف أي ملاحظات..." rows="3"></textarea>
+            </div>
+            
+            <button type="button" class="btn btn-primary btn-block" onclick="enableDrawMode()">
+              <i class="fas fa-map-marker-alt"></i> اختر موقع على الخريطة
+            </button>
+          </form>
         </div>
+
+        <!-- أدوات النظام -->
+        <div class="section">
+          <h2><i class="fas fa-tools"></i> أدوات النظام</h2>
+          <button class="btn btn-success btn-block" onclick="exportToJSON()">
+            <i class="fas fa-download"></i> تصدير البيانات (JSON)
+          </button>
+          <button class="btn btn-info btn-block" onclick="generateReport()">
+            <i class="fas fa-file-pdf"></i> إنشاء تقرير PDF
+          </button>
+          <button class="btn btn-secondary btn-block" onclick="toggleHeatmap()">
+            <i class="fas fa-fire"></i> الخريطة الحرارية
+          </button>
+        </div>
+      </div>
     </div>
 
-    <script>
-        console.log('Script started loading...');
-        
-        // Configuration - المفتاح الجديد
-        mapboxgl.accessToken = 'pk.eyJ1IjoiYWxxcXEiLCJhIjoiY21jMGVoZ2FlMDFleTJscjU3eGxnZ3Z6eCJ9.ol_MJHuh-RRP0BAaVvpe0w';
-        console.log('Access token set:', mapboxgl.accessToken ? 'Yes' : 'No');
+    <!-- الخريطة -->
+    <div class="map-container">
+      <div id="map"></div>
+    </div>
+  </div>
 
-        // Global variables
-        let map, draw, markers = [], textMarkers = [];
-        let reports = JSON.parse(localStorage.getItem("hotelReports") || "[]");
-        let drawMode = null, currentReportId = null;
-        let isSatelliteView = true;
+  <!-- شاشة التحميل -->
+  <div id="loading" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">جاري تحميل النظام...</div>
+      <p style="margin-top: 10px; opacity: 0.8;">تهيئة خريطة مكة المكرمة</p>
+    </div>
+  </div>
 
-        // Utility functions
-        const showNotification = (message, type = 'info') => {
-            console.log(`${type.toUpperCase()}: ${message}`);
-        };
+  <script>
+    // إعدادات النظام
+    const CONFIG = {
+      MAPBOX_TOKEN: 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw',
+      MECCA_CENTER: [39.8264, 21.4225],
+      DEFAULT_ZOOM: 13,
+      MAX_REPORTS: 1000
+    };
 
-        // Data management
-        const saveReports = () => {
-            try {
-                localStorage.setItem("hotelReports", JSON.stringify(reports));
-                console.log('Reports saved successfully');
-            } catch (error) {
-                console.error('Error saving reports:', error);
-            }
-        };
+    // متغيرات النظام
+    let map;
+    let draw;
+    let reports = [];
+    let markers = new Map();
+    let drawMode = false;
+    let heatmapVisible = false;
+    let reportIdCounter = 1;
 
-        const updateStats = () => {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById("totalIssues").textContent = reports.length;
-            document.getElementById("criticalIssues").textContent = reports.filter(r => r.severity === "عالي جداً").length;
-            document.getElementById("todayIssues").textContent = reports.filter(r => r.date === today).length;
-            document.getElementById("resolvedIssues").textContent = reports.filter(r => r.resolved).length;
-        };
+    // تهيئة Mapbox
+    mapboxgl.accessToken = CONFIG.MAPBOX_TOKEN;
 
-        // Report management
-        const addReportMode = () => {
-            const hotelName = document.getElementById("hotelName").value.trim();
-            if (!hotelName) {
-                alert("يرجى إدخال اسم الفندق");
-                return;
-            }
-            drawMode = "point";
-            map.getCanvas().style.cursor = 'crosshair';
-            showNotification("انقر على الخريطة لإضافة البلاغ", "info");
-        };
+    /**
+     * تفعيل وضع الرسم لإضافة نقطة جديدة
+     */
+    const enableDrawMode = () => {
+      const form = document.getElementById('reportForm');
+      
+      // التحقق من صحة النموذج
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      
+      drawMode = true;
+      map.getCanvas().style.cursor = 'crosshair';
+      showMessage("انقر على الخريطة لتحديد موقع الفندق", 'info');
+    };
 
-        const closeDetails = () => {
-            document.getElementById("detailsPanel").style.display = 'none';
-        };
+    /**
+     * إضافة بلاغ جديد
+     */
+    const addReport = (lngLat) => {
+      const hotelName = document.getElementById('hotelName').value.trim();
+      const issueType = document.getElementById('issueType').value;
+      const severity = document.getElementById('severity').value;
+      const reportDate = document.getElementById('reportDate').value;
+      const notes = document.getElementById('notes').value.trim();
 
-        const deleteReport = () => {
-            if (confirm("هل أنت متأكد من حذف هذا البلاغ؟")) {
-                reports = reports.filter(r => r.id !== currentReportId);
-                saveReports();
-                renderMarkers();
-                updateStats();
-                closeDetails();
-                showNotification("تم حذف البلاغ بنجاح", "success");
-            }
-        };
+      if (!hotelName || !issueType || !severity || !reportDate) {
+        showMessage("يرجى ملء جميع الحقول المطلوبة", 'error');
+        return;
+      }
 
-        const showDetails = (report) => {
-            currentReportId = report.id;
-            document.getElementById("d-hotel").textContent = report.hotel;
-            document.getElementById("d-date").textContent = report.date;
-            document.getElementById("d-issue").textContent = report.issue;
-            document.getElementById("d-severity").textContent = report.severity;
-            document.getElementById("d-coords").textContent = `${report.lat.toFixed(5)}, ${report.lng.toFixed(5)}`;
-            document.getElementById("detailsPanel").style.display = 'block';
-        };
+      const newReport = {
+        id: reportIdCounter++,
+        hotel: hotelName,
+        issue: issueType,
+        severity: severity,
+        date: reportDate,
+        note: notes,
+        lat: lngLat.lat,
+        lng: lngLat.lng,
+        timestamp: new Date().toISOString()
+      };
 
-        // Map event handlers
-        const handleMapClick = (e) => {
-            if (drawMode === "point") {
-                drawMode = null;
-                map.getCanvas().style.cursor = '';
-                
-                const report = {
-                    id: Date.now(),
-                    hotel: document.getElementById("hotelName").value.trim(),
-                    date: document.getElementById("reportDate").value || new Date().toISOString().split("T")[0],
-                    issue: document.getElementById("issueType").value,
-                    severity: document.getElementById("severity").value,
-                    lng: e.lngLat.lng,
-                    lat: e.lngLat.lat,
-                    resolved: false,
-                    timestamp: new Date().toISOString()
-                };
-                
-                reports.push(report);
-                saveReports();
-                renderMarkers();
-                updateStats();
-                showNotification("تم إضافة البلاغ بنجاح", "success");
-                
-                // Clear form
-                document.getElementById("hotelName").value = '';
-            } else if (drawMode === "text") {
-                const text = prompt("اكتب النص:");
-                if (text) {
-                    const textElement = document.createElement("div");
-                    textElement.textContent = text;
-                    textElement.style.cssText = `
-                        color: black;
-                        font-weight: bold;
-                        background: rgba(255,255,255,0.9);
-                        padding: 4px 8px;
-                        border-radius: 6px;
-                        font-size: 12px;
-                        border: 1px solid #ccc;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                    `;
-                    
-                    const textMarker = new mapboxgl.Marker({ element: textElement })
-                        .setLngLat(e.lngLat)
-                        .addTo(map);
-                    
-                    textMarkers.push(textMarker);
-                }
-                drawMode = null;
-            }
-        };
+      reports.push(newReport);
+      addMarker(newReport);
+      updateStats();
+      saveReports();
+      
+      // إعادة تعيين النموذج
+      document.getElementById('reportForm').reset();
+      document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+      map.getCanvas().style.cursor = '';
+      
+      showMessage(`تم إضافة بلاغ للفندق: ${hotelName}`, 'success');
+      console.log('تم إضافة بلاغ جديد:', newReport);
+    };
 
-        // Marker rendering
-        const renderMarkers = () => {
-            // Clear existing markers
-            markers.forEach(marker => marker.remove());
-            markers = [];
-            
-            // Add new markers
-            reports.forEach(report => {
-                const markerElement = document.createElement("div");
-                markerElement.className = `custom-marker ${getSeverityClass(report.severity)}`;
-                markerElement.textContent = "!";
-                markerElement.onclick = () => showDetails(report);
-                
-                const marker = new mapboxgl.Marker(markerElement)
-                    .setLngLat([report.lng, report.lat])
-                    .addTo(map);
-                
-                markers.push(marker);
-            });
-        };
+    /**
+     * إضافة علامة على الخريطة
+     */
+    const addMarker = (report) => {
+      const severityColors = {
+        "حرجة": "#e74c3c",
+        "عالية": "#ff6b35", 
+        "متوسطة": "#f39c12",
+        "منخفضة": "#27ae60"
+      };
 
-        const getSeverityClass = (severity) => {
-            const severityMap = {
-                "منخفض": "severity-low",
-                "متوسط": "severity-medium",
-                "عالي": "severity-high",
-                "عالي جداً": "severity-critical"
-            };
-            return severityMap[severity] || "severity-low";
-        };
+      const severityIcons = {
+        "حرجة": "exclamation-triangle",
+        "عالية": "exclamation-circle",
+        "متوسطة": "info-circle", 
+        "منخفضة": "check-circle"
+      };
 
-        // Export functions
-        const exportReports = () => {
-            const dataStr = JSON.stringify(reports, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `hotel_reports_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            URL.revokeObjectURL(url);
-            showNotification("تم تصدير البيانات بنجاح", "success");
-        };
+      // إنشاء عنصر HTML للعلامة
+      const markerElement = document.createElement('div');
+      markerElement.className = 'custom-marker';
+      markerElement.innerHTML = `
+        <div style="
+          background: ${severityColors[report.severity]};
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          border: 3px solid white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 14px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+          cursor: pointer;
+          transition: transform 0.2s ease;
+        ">
+          <i class="fas fa-${severityIcons[report.severity]}"></i>
+        </div>
+      `;
 
-        const printReports = () => {
-            const printWindow = window.open('', '_blank');
-            const printContent = `
-                <html dir="rtl">
-                <head>
-                    <title>تقرير بلاغات فنادق مكة</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
-                        th { background-color: #f5f5f5; font-weight: bold; }
-                        h1 { text-align: center; color: #333; }
-                        .severity-high { background-color: #ffebee; }
-                        .severity-critical { background-color: #fce4ec; }
-                    </style>
-                </head>
-                <body>
-                    <h1>تقرير بلاغات فنادق مكة المكرمة</h1>
-                    <p><strong>تاريخ التقرير:</strong> ${new Date().toLocaleDateString('ar-SA')}</p>
-                    <p><strong>إجمالي البلاغات:</strong> ${reports.length}</p>
-                    
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>الفندق</th>
-                                <th>التاريخ</th>
-                                <th>نوع المشكلة</th>
-                                <th>درجة الخطورة</th>
-                                <th>الإحداثيات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${reports.map(report => `
-                                <tr class="${getSeverityClass(report.severity)}">
-                                    <td>${report.hotel}</td>
-                                    <td>${report.date}</td>
-                                    <td>${report.issue}</td>
-                                    <td>${report.severity}</td>
-                                    <td>${report.lat.toFixed(5)}, ${report.lng.toFixed(5)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </body>
-                </html>
-            `;
-            
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            printWindow.print();
-        };
+      // تأثير hover
+      markerElement.addEventListener('mouseenter', () => {
+        markerElement.style.transform = 'scale(1.2)';
+      });
+      
+      markerElement.addEventListener('mouseleave', () => {
+        markerElement.style.transform = 'scale(1)';
+      });
 
-        // Control handlers
-        const setupControls = () => {
-            document.getElementById("togglePolygon").onclick = () => {
-                drawMode = "polygon";
-                draw.changeMode("draw_polygon");
-                document.getElementById("togglePolygon").classList.add("active");
-            };
+      // إنشاء النافذة المنبثقة
+      const popupContent = `
+        <div class="popup-hotel-name">${report.hotel}</div>
+        <div class="popup-field">
+          <span class="popup-label">المشكلة:</span> ${report.issue}
+        </div>
+        <div class="popup-field">
+          <span class="popup-label">الخطورة:</span> 
+          <span class="severity-${report.severity.toLowerCase()}">${report.severity}</span>
+        </div>
+        <div class="popup-field">
+          <span class="popup-label">التاريخ:</span> ${report.date}
+        </div>
+        ${report.note ? `
+        <div class="popup-field">
+          <span class="popup-label">ملاحظات:</span> ${report.note}
+        </div>
+        ` : ''}
+        <div class="popup-actions">
+          <button class="btn btn-danger btn-sm" onclick="deleteReport(${report.id})">
+            <i class="fas fa-trash"></i> حذف
+          </button>
+        </div>
+      `;
 
-            document.getElementById("toggleLine").onclick = () => {
-                drawMode = "line";
-                draw.changeMode("draw_line_string");
-                document.getElementById("toggleLine").classList.add("active");
-            };
+      const popup = new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false
+      }).setHTML(popupContent);
 
-            document.getElementById("toggleText").onclick = () => {
-                drawMode = "text";
-                showNotification("انقر على الخريطة لإضافة نص", "info");
-                document.getElementById("toggleText").classList.add("active");
-            };
+      // إنشاء العلامة
+      const marker = new mapboxgl.Marker(markerElement)
+        .setLngLat([report.lng, report.lat])
+        .setPopup(popup)
+        .addTo(map);
 
-            document.getElementById("clearZones").onclick = () => {
-                if (confirm("هل تريد مسح جميع المناطق والنصوص؟")) {
-                    draw.deleteAll();
-                    textMarkers.forEach(marker => marker.remove());
-                    textMarkers = [];
-                    showNotification("تم مسح جميع المناطق", "success");
-                }
-            };
+      markers.set(report.id, marker);
+    };
 
-            document.getElementById("toggleView").onclick = () => {
-                isSatelliteView = !isSatelliteView;
-                const style = isSatelliteView ? 
-                    'mapbox://styles/mapbox/satellite-streets-v12' : 
-                    'mapbox://styles/mapbox/streets-v12';
-                map.setStyle(style);
-                document.getElementById("toggleView").textContent = 
-                    isSatellite️ صناعي";
-            };
-        };
-
-        // Initialize map
-        const initMap = () => {
-            try {
-                // Check if Mapbox GL JS is loaded
-                if (!window.mapboxgl) {
-                    throw new Error('Mapbox GL JS لم يتم تحميله بشكل صحيح');
-                }
-
-                // Verify access token
-                if (!mapboxgl.accessToken) {
-                    throw new Error('مفتاح API غير موجود');
-                }
-
-                console.log('Starting map initialization...');
-
-                map = new mapboxgl.Map({
-                    container: 'map',
-                    style: 'mapbox://styles/mapbox/satellite-streets-v12',
-                    center: [39.8262, 21.4225], // Mecca coordinates
-                    zoom: 13,
-                    pitch: 0,
-                    bearing: 0
-                });
-
-                // Add error handler for map
-                map.on('error', (e) => {
-                    console.error('Map error:', e);
-                    document.getElementById("loadingOverlay").innerHTML = `
-                        <div class="loading-content">
-                            <div style="background: rgba(255,0,0,0.1); padding: 30px; border-radius: 16px;">
-                                <h2 style="color: #ff6b6b;">❌ خطأ في الخريطة</h2>
-                                <p style="color: white;">${e.error?.message || 'حدث خطأ في تحميل الخريطة'}</p>
-                                <button onclick="location.reload()" style="
-                                    background: #4CAF50;
-                                    color: white;
-                                    border: none;
-                                    padding: 12px 24px;
-                                    border-radius: 8px;
-                                    font-size: 16px;
-                                    cursor: pointer;
-                                    margin-top: 20px;
-                                ">إعادة المحاولة</button>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                map.addControl(new mapboxgl.NavigationControl(), 'top-left');
-                map.addControl(new mapboxgl.FullscreenControl(), 'top-left');
-
-                draw = new MapboxDraw({
-                    displayControlsDefault: false,
-                    styles: [
-                        {
-                            'id': 'gl-draw-polygon-fill-inactive',
-                            'type': 'fill',
-                            'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']],
-                            'paint': {
-                                'fill-color': '#667eea',
-                                'fill-outline-color': '#667eea',
-                                'fill-opacity': 0.4
-                            }
-                        },
-                        {
-                            'id': 'gl-draw-polygon-fill-active',
-                            'type': 'fill',
-                            'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
-                            'paint': {
-                                'fill-color': '#667eea',
-                                'fill-outline-color': '#667eea',
-                                'fill-opacity': 0.6
-                            }
-                        },
-                        {
-                            'id': 'gl-draw-polygon-stroke-inactive',
-                            'type': 'line',
-                            'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']],
-                            'layout': {
-                                'line-cap': 'round',
-                                'line-join': 'round'
-                            },
-                            'paint': {
-                                'line-color': '#667eea',
-                                'line-width': 3
-                            }
-                        },
-                        {
-                            'id': 'gl-draw-polygon-stroke-active',
-                            'type': 'line',
-                            'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
-                            'layout': {
-                                'line-cap': 'round',
-                                'line-join': 'round'
-                            },
-                            'paint': {
-                                'line-color': '#667eea',
-                                'line-width': 4
-                            }
-                        },
-                        {
-                            'id': 'gl-draw-line-inactive',
-                            'type': 'line',
-                            'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'LineString']],
-                            'layout': {
-                                'line-cap': 'round',
-                                'line-join': 'round'
-                            },
-                            'paint': {
-                                'line-color': '#667eea',
-                                'line-width': 3
-                            }
-                        },
-                        {
-                            'id': 'gl-draw-line-active',
-                            'type': 'line',
-                            'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'LineString']],
-                            'layout': {
-                                'line-cap': 'round',
-                                'line-join': 'round'
-                            },
-                            'paint': {
-                                'line-color': '#667eea',
-                                'line-width': 4
-                            }
-                        },
-                        {
-                            'id': 'gl-draw-polygon-and-line-vertex-halo-inactive',
-                            'type': 'circle',
-                            'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
-                            'paint': {
-                                'circle-radius': 7,
-                                'circle-color': 'rgba(255,255,255,1)'
-                            }
-                        },
-                        {
-                            'id': 'gl-draw-polygon-and-line-vertex-inactive',
-                            'type': 'circle',
-                            'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
-                            'paint': {
-                                'circle-radius': 5,
-                                'circle-color': '#667eea'
-                            }
-                        }
-                    ]
-                });
-
-                map.addControl(draw);
-
-                // Map events
-                map.on('load', () => {
-                    console.log('Map loaded successfully');
-                    renderMarkers();
-                    updateStats();
-                    setupControls();
-                    
-                    // Hide loading overlay
-                    document.getElementById("loadingOverlay").style.display = 'none';
-                });
-
-                map.on('style.load', () => {
-                    console.log('Map style loaded');
-                });
-
-                map.on('idle', () => {
-                    console.log('Map is idle and ready');
-                });
-
-                map.on('click', handleMapClick);
-
-                draw.on('draw.create', updateArea);
-                draw.on('draw.delete', updateArea);
-                draw.on('draw.update', updateArea);
-
-                // Zone color change
-                document.getElementById("zoneColor").addEventListener('change', function(e) {
-                    const color = e.target.value;
-                    // Update draw styles with new color
-                    const newStyles = draw.options.styles.map(style => {
-                        if (style.paint) {
-                            if (style.paint['fill-color']) style.paint['fill-color'] = color;
-                            if (style.paint['fill-outline-color']) style.paint['fill-outline-color'] = color;
-                            if (style.paint['line-color']) style.paint['line-color'] = color;
-                            if (style.paint['circle-color'] && style.paint['circle-color'] !== 'rgba(255,255,255,1)') {
-                                style.paint['circle-color'] = color;
-                            }
-                        }
-                        return style;
-                    });
-                    
-                    // Remove and re-add draw control with new styles
-                    map.removeControl(draw);
-                    draw = new MapboxDraw({
-                        displayControlsDefault: false,
-                        styles: newStyles
-                    });
-                    map.addControl(draw);
-                });
-
-                // Set today's date as default
-                document.getElementById("reportDate").value = new Date().toISOString().split('T')[0];
-
-            } catch (error) {
-                console.error('Error initializing map:', error);
-                document.getElementById("loadingOverlay").innerHTML = `
-                    <div class="loading-content">
-                        <div style="background: rgba(255,0,0,0.1); padding: 30px; border-radius: 16px; border: 2px solid #ff6b6b;">
-                            <h2 style="color: #ff6b6b; margin-bottom: 20px;">⚠️ فشل تحميل الخريطة</h2>
-                            <p style="color: white; margin-bottom: 15px;">رسالة الخطأ: ${error.message}</p>
-                            <p style="color: white; margin-bottom: 15px;">يرجى التحقق من:</p>
-                            <ul style="text-align: right; color: white; margin-bottom: 20px;">
-                                <li>اتصال الإنترنت نشط</li>
-                                <li>السماح بتحميل محتوى Mapbox</li>
-                                <li>عدم وجود حاجب إعلانات يمنع التحميل</li>
-                                <li>فتح Console للمزيد من التفاصيل (F12)</li>
-                            </ul>
-                            <button onclick="location.reload()" style="
-                                background: #4CAF50;
-                                color: white;
-                                border: none;
-                                padding: 12px 24px;
-                                border-radius: 8px;
-                                font-size: 16px;
-                                cursor: pointer;
-                                font-family: 'Cairo', sans-serif;
-                                margin-left: 10px;
-                            ">إعادة المحاولة</button>
-                            <button onclick="enableSimpleMode()" style="
-                                background: #2196F3;
-                                color: white;
-                                border: none;
-                                padding: 12px 24px;
-                                border-radius: 8px;
-                                font-size: 16px;
-                                cursor: pointer;
-                                font-family: 'Cairo', sans-serif;
-                            ">تشغيل الوضع البسيط</button>
-                        </div>
-                    </div>
-                `;
-            }
-        };
-
-        const updateArea = () => {
-            const data = draw.getAll();
-            console.log('Draw data updated:', data);
-        };
-
-        // Alternative simple mode if Mapbox fails
-        window.enableSimpleMode = function() {
-            document.getElementById("loadingOverlay").style.display = 'none';
-            document.getElementById("map").innerHTML = `
-                <div style="
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100%;
-                    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                    color: white;
-                    font-family: 'Cairo', sans-serif;
-                    padding: 20px;
-                    text-align: center;
-                ">
-                    <div>
-                        <h1 style="font-size: 36px; margin-bottom: 20px;">نظام مراقبة فنادق مكة</h1>
-                        <p style="font-size: 18px; margin-bottom: 30px;">النظام يعمل في الوضع البسيط</p>
-                        <p style="font-size: 16px; opacity: 0.8;">يمكنك استخدام النماذج على اليمين لإدخال البيانات</p>
-                    </div>
-                </div>
-            `;
-            
-            // Initialize basic functionality
-            updateStats();
-            document.getElementById("reportDate").value = new Date().toISOString().split('T')[0];
-        };
-
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initMap);
-        } else {
-            initMap();
-        }
-
-        // Timeout handler - if map doesn't load within 10 seconds
-        setTimeout(() => {
-            if (document.getElementById("loadingOverlay").style.display !== 'none') {
-                document.getElementById("loadingOverlay").innerHTML = `
-                    <div class="loading-content">
-                        <div style="background: rgba(255,0,0,0.1); padding: 30px; border-radius: 16px; border: 2px solid #ff6b6b;">
-                            <h2 style="color: #ff6b6b; margin-bottom: 20px;">⚠️ حدث خطأ في التحميل</h2>
-                            <p style="color: white; margin-bottom: 15px;">الأسباب المحتملة:</p>
-                            <ul style="text-align: right; color: white; margin-bottom: 20px;">
-                                <li>تحقق من اتصال الإنترنت</li>
-                                <li>قد يكون هناك حظر لـ Mapbox من المتصفح</li>
-                                <li>مفتاح API قد يكون غير صالح</li>
-                            </ul>
-                            <button onclick="location.reload()" style="
-                                background: #4CAF50;
-                                color: white;
-                                border: none;
-                                padding: 12px 24px;
-                                border-radius: 8px;
-                                font-size: 16px;
-                                cursor: pointer;
-                                font-family: 'Cairo', sans-serif;
-                                margin-left: 10px;
-                            ">إعادة المحاولة</button>
-                            <button onclick="enableSimpleMode()" style="
-                                background: #2196F3;
-                                color: white;
-                                border: none;
-                                padding: 12px 24px;
-                                border-radius: 8px;
-                                font-size: 16px;
-                                cursor: pointer;
-                                font-family: 'Cairo', sans-serif;
-                            ">تشغيل الوضع البسيط</button>
-                        </div>
-                    </div>
-                `;
-            }
-        }, 10000);
-    </script>
-</body>
-</html>
+    /**
+     * حذف بلاغ
+     */
+    const deleteReport = (reportId) => {
+      if (confirm('هل أنت متأكد من حذف هذا البلاغ؟')) {
+        const index = reports.findIndex(r => r.id === reportId);
+        if (index !== -1) {
+          const deletedReport = reports.splice(index, 1)
