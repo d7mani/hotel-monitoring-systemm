@@ -1,195 +1,1108 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>نظام مراقبة فنادق مكة المكرمة</title>
-  <!-- مكتبات خارجية -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.js"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.css" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.4.3/mapbox-gl-draw.min.js"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl-draw/1.4.3/mapbox-gl-draw.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  <style>
-    html, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; }
-    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-    .sidebar { position: absolute; right: 0; top: 0; bottom: 0; width: 400px; background: #2c3e50; color: white; overflow-y: auto; padding: 20px; z-index: 9999; }
-    .form-control, select, textarea { width: 100%; padding: 10px; margin: 5px 0; border-radius: 6px; border: none; }
-    button { padding: 10px; margin-top: 10px; width: 100%; border-radius: 6px; border: none; background: #3498db; color: white; font-weight: bold; cursor: pointer; }
-    .btn-group { display: flex; flex-direction: column; gap: 10px; }
-    .message-alert { margin-top: 10px; padding: 10px; border-radius: 6px; }
-    .success-message { background-color: #2ecc71; color: white; }
-    .error-message { background-color: #e74c3c; color: white; }
-  </style>
+    <meta charset="utf-8" />
+    <title>نظام مراقبة فنادق مكة المكرمة</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <!-- Mapbox GL JS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    
+    <!-- Mapbox GL Draw -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.js"></script>
+    
+    <!-- Cairo Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --success-gradient: linear-gradient(135deg, #38b2ac 0%, #4fd1c7 100%);
+            --warning-gradient: linear-gradient(135deg, #ed8936 0%, #f6ad55 100%);
+            --danger-gradient: linear-gradient(135deg, #e53e3e 0%, #fc8181 100%);
+            --critical-gradient: linear-gradient(135deg, #9f2a7c 0%, #d53f8c 100%);
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 12px 40px rgba(0, 0, 0, 0.3);
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--secondary-gradient);
+            color: #333;
+            overflow: hidden;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Loading Screen */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(30,60,114,0.95) 0%, rgba(42,82,152,0.95) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #4fd1c7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* Map Container */
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* Title Panel */
+        #titlePanel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-heavy);
+            color: white;
+            z-index: 1001;
+            font-size: 18px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: var(--transition);
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            z-index: 1001;
+        }
+
+        .controls .btn {
+            padding: 10px 16px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            font-size: 13px;
+            backdrop-filter: blur(20px);
+            transition: var(--transition);
+            box-shadow: var(--shadow-light);
+        }
+
+        .controls .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-heavy);
+            background: rgba(255,255,255,0.25);
+        }
+
+        .controls .btn.active {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .controls input[type="color"] {
+            width: 45px;
+            height: 45px;
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            cursor: pointer;
+        }
+
+        /* Panels */
+        .panels {
+            position: absolute;
+            top: 150px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 999;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+        }
+
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--shadow-heavy);
+            color: #333;
+            min-width: 320px;
+            transition: var(--transition);
+        }
+
+        /* Details Panel */
+        #detailsPanel {
+            position: absolute;
+            top: 80px;
+            right: 50%;
+            transform: translateX(50%);
+            width: 350px;
+            max-width: 90%;
+            display: none;
+            z-index: 1001;
+        }
+
+        #detailsPanel h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        #detailsPanel ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #detailsPanel ul li {
+            margin-bottom: 12px;
+            font-size: 14px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        #detailsPanel ul li strong {
+            color: #4a5568;
+            margin-left: 8px;
+        }
+
+        .panel-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .delete-btn, .close-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            transition: var(--transition);
+        }
+
+        .delete-btn {
+            background: var(--danger-gradient);
+        }
+
+        .close-btn {
+            background: #6b7280;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 13px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: var(--border-radius);
+            background: white;
+            font-size: 14px;
+            color: #333;
+            transition: var(--transition);
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            margin-bottom: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--transition);
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+
+        /* Statistics */
+        .stats-header {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 18px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            border: 2px solid #f1f5f9;
+            color: #333;
+            transition: var(--transition);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 900;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        /* Markers */
+        .custom-marker {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--shadow-heavy);
+            border: 3px solid rgba(255,255,255,0.9);
+            transition: var(--transition);
+        }
+
+        .custom-marker:hover {
+            transform: scale(1.15);
+        }
+
+        .severity-low {
+            background: var(--success-gradient);
+        }
+
+        .severity-medium {
+            background: var(--warning-gradient);
+        }
+
+        .severity-high {
+            background: var(--danger-gradient);
+        }
+
+        .severity-critical {
+            background: var(--critical-gradient);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .panels {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-height: 50vh;
+                flex-direction: row;
+                overflow-x: auto;
+            }
+
+            .glass-panel {
+                min-width: 280px;
+                flex-shrink: 0;
+            }
+
+            .controls {
+                flex-direction: column;
+                top: 120px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div class="sidebar">
-    <h2>نظام مراقبة الفنادق</h2>
-    <input type="text" id="hotelName" class="form-control" placeholder="اسم الفندق" required>
-    <select id="issueType" class="form-control">
-      <option value="">نوع المشكلة</option>
-      <option>انقطاع الكهرباء</option>
-      <option>مشكلة التكييف</option>
-      <option>النظافة</option>
-    </select>
-    <select id="severity" class="form-control">
-      <option value="">درجة الخطورة</option>
-      <option>حرجة</option>
-      <option>عالية</option>
-      <option>متوسطة</option>
-      <option>منخفضة</option>
-    </select>
-    <input type="date" id="reportDate" class="form-control">
-    <textarea id="notes" class="form-control" placeholder="ملاحظات إضافية..."></textarea>
-    <button onclick="enableDrawMode()">تحديد الموقع على الخريطة</button>
-    <div class="btn-group">
-      <button onclick="exportToJSON()">📦 تصدير JSON</button>
-      <button onclick="generateReport()">📄 إنشاء PDF</button>
-      <button onclick="toggleHeatmap()">🔥 عرض الخريطة الحرارية</button>
+    <div id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">جاري تحميل النظام...</div>
+        </div>
     </div>
-    <p>إجمالي البلاغات: <span id="totalReports">0</span></p>
-  </div>
-  <script>
-    const CONFIG = {
-      MAPBOX_TOKEN: 'pk.eyJ1IjoiYWxxcXEiLCJhIjoiY21jMGVoZ2FlMDFleTJscjU3eGxnZ3Z6eCJ9.ol_MJHuh-RRP0BAaVvpe0w',
-      MECCA_CENTER: [39.8264, 21.4225],
-      DEFAULT_ZOOM: 13
-    };
 
-    mapboxgl.accessToken = CONFIG.MAPBOX_TOKEN;
-    let map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: CONFIG.MECCA_CENTER,
-      zoom: CONFIG.DEFAULT_ZOOM
-    });
+    <div id="map"></div>
 
-    let drawMode = false;
-    let reports = [];
-    let markers = new Map();
-    let reportIdCounter = 1;
-    let heatmapVisible = false;
-    let heatLayerId = 'heatmap-reports';
+    <div id="titlePanel">
+        نظام مراقبة فنادق مكة المكرمة
+    </div>
 
-    map.on('click', (e) => {
-      if (drawMode) {
-        addReport(e.lngLat);
-        drawMode = false;
-        map.getCanvas().style.cursor = '';
-      }
-    });
+    <div class="controls">
+        <button id="togglePolygon" class="btn" title="رسم منطقة مضمضلع</button>
+        <button id="toggleLine" class="btn" title="ر<button id="toggleText" class="btn" title="إضافة نص">✏️ نص</button>
+        <input type="color" id="zoneColor" value="#667eea" title="لون المنطقة" />
+        <button id="clearZones" class="btn" title="مسح المناطق"></button>
+        <button id="toggleView" class="btn" title="تبديل العرض">>
+    </div>
 
-    function enableDrawMode() {
-      if (!validateForm()) return;
-      drawMode = true;
-      map.getCanvas().style.cursor = 'crosshair';
-    }
+    <div id="detailsPanel" class="glass-panel">
+        فاصيل البلاغ</h3>
+        <ul>
+            <li><strong>d-hotel"></span></li>
+            > <span id="d-date"></span></li>
+            <li><strong>⚠️ المشكلة:</strong> <span id="d-issue"></span></li>
+            <li><strong</strong> <span id="d-severity"></span></li>
+            الإحداثيات:</strong> <span id="d-coords"></span></li>
+        </ul>
+        <div class="panel-buttons">
+            <button class="delete-btn" onclick="deleteReportذف</button>
+            <button class="close-btn" onclick="closeDetails()">❌ إغلاق</button>
+        </div>
+    </div>
 
-    function validateForm() {
-      const fields = ['hotelName', 'issueType', 'severity', 'reportDate'];
-      for (let id of fields) {
-        if (!document.getElementById(id).value) {
-          showMessage('يرجى ملء جميع الحقول المطلوبة', 'error');
-          return false;
+    <div class="panels">
+        <div class="glass-panel">
+            <h3 style="text-align: center; margin-bottom: 20px; color: #333;">➕ إضافة بلاغ جديد</h3>
+            
+            <div class="form-group">
+                <label for="hotelNameندق:</label>
+                <input id="hotelName" class="form-control" placeholder="أدخل اسم الفندق" />
+            </div>
+
+            <div class="form-group">
+                <label for="report
+                <input id="reportDate" type="date" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="issueType">⚠️ نوع المشكلة:</label>
+                <select id="issueType" class="form-control">
+                    <option value="ضعف ضخ المياه</option>
+                <option value="❌ غير مربوط">❌ غير مربوط</option>
+                    <option value="⚫ انقطاع كامل">⚫ انقطاع كامل</option>
+                    <option value="لوبة</option>
+                    <option value="⚠️ مشاكل أخرى">⚠️ مشاكل أخرى</option>
+                </select>
+            </div>
+
+            <div class="form-group">جة الخطورة:</label>
+                <select id="severity" class="form-control">
+                    <option value="من</option>
+                    <option value="متوسط">>
+                    <option value="عالي</option>
+                    <option value="ع</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" onclick="addReportMode()">
+                ➕ إضافة بلاغ على الخريطة
+            </button>
+
+            <button class="btn btn-secondary" onclick="exportReports()">
+                انات
+            </button>
+
+            <button class="btn btn-secondary" onclick="printباعة التقرير
+            </button>
+        </div>
+
+        <div class="glass-panel">
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalIssues">0</div>
+                    <div class="stat-label">إجمالي البلاغات</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="criticalIssues">0</div>
+                    <div class="stat-label">الحالات الحرجة</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todayIssues">0</div>
+                    <div class="stat-label">بلاغات اليوم</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="resolvedIssues">0</div>
+                    <div class="stat-label">المحلولة</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('Script started loading...');
+        
+        // Configuration - المفتاح الجديد
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYWxxcXEiLCJhIjoiY21iem4yM3gwMXZ1bjJqczNkMWZpZWs4OSJ9.uEq8QTxionpgU2s6e9BIeQ';
+        console.log('Access token set:', mapboxgl.accessToken ? 'Yes' : 'No');
+
+        // Global variables
+        let map, draw, markers = [], textMarkers = [];
+        let reports = JSON.parse(localStorage.getItem("hotelReports") || "[]");
+        let drawMode = null, currentReportId = null;
+        let isSatelliteView = true;
+
+        // Utility functions
+        const showNotification = (message, type = 'info') => {
+            console.log(`${type.toUpperCase()}: ${message}`);
+        };
+
+        // Data management
+        const saveReports = () => {
+            try {
+                localStorage.setItem("hotelReports", JSON.stringify(reports));
+                console.log('Reports saved successfully');
+            } catch (error) {
+                console.error('Error saving reports:', error);
+            }
+        };
+
+        const updateStats = () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById("totalIssues").textContent = reports.length;
+            document.getElementById("criticalIssues").textContent = reports.filter(r => r.severity === "عالي جداً").length;
+            document.getElementById("todayIssues").textContent = reports.filter(r => r.date === today).length;
+            document.getElementById("resolvedIssues").textContent = reports.filter(r => r.resolved).length;
+        };
+
+        // Report management
+        const addReportMode = () => {
+            const hotelName = document.getElementById("hotelName").value.trim();
+            if (!hotelName) {
+                alert("يرجى إدخال اسم الفندق");
+                return;
+            }
+            drawMode = "point";
+            map.getCanvas().style.cursor = 'crosshair';
+            showNotification("انقر على الخريطة لإضافة البلاغ", "info");
+        };
+
+        const closeDetails = () => {
+            document.getElementById("detailsPanel").style.display = 'none';
+        };
+
+        const deleteReport = () => {
+            if (confirm("هل أنت متأكد من حذف هذا البلاغ؟")) {
+                reports = reports.filter(r => r.id !== currentReportId);
+                saveReports();
+                renderMarkers();
+                updateStats();
+                closeDetails();
+                showNotification("تم حذف البلاغ بنجاح", "success");
+            }
+        };
+
+        const showDetails = (report) => {
+            currentReportId = report.id;
+            document.getElementById("d-hotel").textContent = report.hotel;
+            document.getElementById("d-date").textContent = report.date;
+            document.getElementById("d-issue").textContent = report.issue;
+            document.getElementById("d-severity").textContent = report.severity;
+            document.getElementById("d-coords").textContent = `${report.lat.toFixed(5)}, ${report.lng.toFixed(5)}`;
+            document.getElementById("detailsPanel").style.display = 'block';
+        };
+
+        // Map event handlers
+        const handleMapClick = (e) => {
+            if (drawMode === "point") {
+                drawMode = null;
+                map.getCanvas().style.cursor = '';
+                
+                const report = {
+                    id: Date.now(),
+                    hotel: document.getElementById("hotelName").value.trim(),
+                    date: document.getElementById("reportDate").value || new Date().toISOString().split("T")[0],
+                    issue: document.getElementById("issueType").value,
+                    severity: document.getElementById("severity").value,
+                    lng: e.lngLat.lng,
+                    lat: e.lngLat.lat,
+                    resolved: false,
+                    timestamp: new Date().toISOString()
+                };
+                
+                reports.push(report);
+                saveReports();
+                renderMarkers();
+                updateStats();
+                showNotification("تم إضافة البلاغ بنجاح", "success");
+                
+                // Clear form
+                document.getElementById("hotelName").value = '';
+            } else if (drawMode === "text") {
+                const text = prompt("اكتب النص:");
+                if (text) {
+                    const textElement = document.createElement("div");
+                    textElement.textContent = text;
+                    textElement.style.cssText = `
+                        color: black;
+                        font-weight: bold;
+                        background: rgba(255,255,255,0.9);
+                        padding: 4px 8px;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        border: 1px solid #ccc;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                    `;
+                    
+                    const textMarker = new mapboxgl.Marker({ element: textElement })
+                        .setLngLat(e.lngLat)
+                        .addTo(map);
+                    
+                    textMarkers.push(textMarker);
+                }
+                drawMode = null;
+            }
+        };
+
+        // Marker rendering
+        const renderMarkers = () => {
+            // Clear existing markers
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            
+            // Add new markers
+            reports.forEach(report => {
+                const markerElement = document.createElement("div");
+                markerElement.className = `custom-marker ${getSeverityClass(report.severity)}`;
+                markerElement.textContent = "!";
+                markerElement.onclick = () => showDetails(report);
+                
+                const marker = new mapboxgl.Marker(markerElement)
+                    .setLngLat([report.lng, report.lat])
+                    .addTo(map);
+                
+                markers.push(marker);
+            });
+        };
+
+        const getSeverityClass = (severity) => {
+            const severityMap = {
+                "منخفض": "severity-low",
+                "متوسط": "severity-medium",
+                "عالي": "severity-high",
+                "عالي جداً": "severity-critical"
+            };
+            return severityMap[severity] || "severity-low";
+        };
+
+        // Export functions
+        const exportReports = () => {
+            const dataStr = JSON.stringify(reports, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `hotel_reports_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showNotification("تم تصدير البيانات بنجاح", "success");
+        };
+
+        const printReports = () => {
+            const printWindow = window.open('', '_blank');
+            const printContent = `
+                <html dir="rtl">
+                <head>
+                    <title>تقرير بلاغات فنادق مكة</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
+                        th { background-color: #f5f5f5; font-weight: bold; }
+                        h1 { text-align: center; color: #333; }
+                        .severity-high { background-color: #ffebee; }
+                        .severity-critical { background-color: #fce4ec; }
+                    </style>
+                </head>
+                <body>
+                    <h1>تقرير بلاغات فنادق مكة المكرمة</h1>
+                    <p><strong>تاريخ التقرير:</strong> ${new Date().toLocaleDateString('ar-SA')}</p>
+                    <p><strong>إجمالي البلاغات:</strong> ${reports.length}</p>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الفندق</th>
+                                <th>التاريخ</th>
+                                <th>نوع المشكلة</th>
+                                <th>درجة الخطورة</th>
+                                <th>الإحداثيات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reports.map(report => `
+                                <tr class="${getSeverityClass(report.severity)}">
+                                    <td>${report.hotel}</td>
+                                    <td>${report.date}</td>
+                                    <td>${report.issue}</td>
+                                    <td>${report.severity}</td>
+                                    <td>${report.lat.toFixed(5)}, ${report.lng.toFixed(5)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+        };
+
+        // Control handlers
+        const setupControls = () => {
+            document.getElementById("togglePolygon").onclick = () => {
+                drawMode = "polygon";
+                draw.changeMode("draw_polygon");
+                document.getElementById("togglePolygon").classList.add("active");
+            };
+
+            document.getElementById("toggleLine").onclick = () => {
+                drawMode = "line";
+                draw.changeMode("draw_line_string");
+                document.getElementById("toggleLine").classList.add("active");
+            };
+
+            document.getElementById("toggleText").onclick = () => {
+                drawMode = "text";
+                showNotification("انقر على الخريطة لإضافة نص", "info");
+                document.getElementById("toggleText").classList.add("active");
+            };
+
+            document.getElementById("clearZones").onclick = () => {
+                if (confirm("هل تريد مسح جميع المناطق والنصوص؟")) {
+                    draw.deleteAll();
+                    textMarkers.forEach(marker => marker.remove());
+                    textMarkers = [];
+                    showNotification("تم مسح جميع المناطق", "success");
+                }
+            };
+
+            document.getElementById("toggleView").onclick = () => {
+                isSatelliteView = !isSatelliteView;
+                const style = isSatelliteView ? 
+                    'mapbox://styles/mapbox/satellite-streets-v12' : 
+                    'mapbox://styles/mapbox/streets-v12';
+                map.setStyle(style);
+                document.getElementById("toggleView").textContent = 
+                    isSatellite️ صناعي";
+            };
+        };
+
+        // Initialize map
+        const initMap = () => {
+            try {
+                // Check if Mapbox GL JS is loaded
+                if (!window.mapboxgl) {
+                    throw new Error('Mapbox GL JS لم يتم تحميله بشكل صحيح');
+                }
+
+                // Verify access token
+                if (!mapboxgl.accessToken) {
+                    throw new Error('مفتاح API غير موجود');
+                }
+
+                console.log('Starting map initialization...');
+
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/satellite-streets-v12',
+                    center: [39.8262, 21.4225], // Mecca coordinates
+                    zoom: 13,
+                    pitch: 0,
+                    bearing: 0
+                });
+
+                // Add error handler for map
+                map.on('error', (e) => {
+                    console.error('Map error:', e);
+                    document.getElementById("loadingOverlay").innerHTML = `
+                        <div class="loading-content">
+                            <div style="background: rgba(255,0,0,0.1); padding: 30px; border-radius: 16px;">
+                                <h2 style="color: #ff6b6b;">❌ خطأ في الخريطة</h2>
+                                <p style="color: white;">${e.error?.message || 'حدث خطأ في تحميل الخريطة'}</p>
+                                <button onclick="location.reload()" style="
+                                    background: #4CAF50;
+                                    color: white;
+                                    border: none;
+                                    padding: 12px 24px;
+                                    border-radius: 8px;
+                                    font-size: 16px;
+                                    cursor: pointer;
+                                    margin-top: 20px;
+                                ">إعادة المحاولة</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+                map.addControl(new mapboxgl.FullscreenControl(), 'top-left');
+
+                draw = new MapboxDraw({
+                    displayControlsDefault: false,
+                    styles: [
+                        {
+                            'id': 'gl-draw-polygon-fill-inactive',
+                            'type': 'fill',
+                            'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']],
+                            'paint': {
+                                'fill-color': '#667eea',
+                                'fill-outline-color': '#667eea',
+                                'fill-opacity': 0.4
+                            }
+                        },
+                        {
+                            'id': 'gl-draw-polygon-fill-active',
+                            'type': 'fill',
+                            'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
+                            'paint': {
+                                'fill-color': '#667eea',
+                                'fill-outline-color': '#667eea',
+                                'fill-opacity': 0.6
+                            }
+                        },
+                        {
+                            'id': 'gl-draw-polygon-stroke-inactive',
+                            'type': 'line',
+                            'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']],
+                            'layout': {
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            },
+                            'paint': {
+                                'line-color': '#667eea',
+                                'line-width': 3
+                            }
+                        },
+                        {
+                            'id': 'gl-draw-polygon-stroke-active',
+                            'type': 'line',
+                            'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
+                            'layout': {
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            },
+                            'paint': {
+                                'line-color': '#667eea',
+                                'line-width': 4
+                            }
+                        },
+                        {
+                            'id': 'gl-draw-line-inactive',
+                            'type': 'line',
+                            'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'LineString']],
+                            'layout': {
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            },
+                            'paint': {
+                                'line-color': '#667eea',
+                                'line-width': 3
+                            }
+                        },
+                        {
+                            'id': 'gl-draw-line-active',
+                            'type': 'line',
+                            'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'LineString']],
+                            'layout': {
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            },
+                            'paint': {
+                                'line-color': '#667eea',
+                                'line-width': 4
+                            }
+                        },
+                        {
+                            'id': 'gl-draw-polygon-and-line-vertex-halo-inactive',
+                            'type': 'circle',
+                            'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                            'paint': {
+                                'circle-radius': 7,
+                                'circle-color': 'rgba(255,255,255,1)'
+                            }
+                        },
+                        {
+                            'id': 'gl-draw-polygon-and-line-vertex-inactive',
+                            'type': 'circle',
+                            'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                            'paint': {
+                                'circle-radius': 5,
+                                'circle-color': '#667eea'
+                            }
+                        }
+                    ]
+                });
+
+                map.addControl(draw);
+
+                // Map events
+                map.on('load', () => {
+                    console.log('Map loaded successfully');
+                    renderMarkers();
+                    updateStats();
+                    setupControls();
+                    
+                    // Hide loading overlay
+                    document.getElementById("loadingOverlay").style.display = 'none';
+                });
+
+                map.on('style.load', () => {
+                    console.log('Map style loaded');
+                });
+
+                map.on('idle', () => {
+                    console.log('Map is idle and ready');
+                });
+
+                map.on('click', handleMapClick);
+
+                draw.on('draw.create', updateArea);
+                draw.on('draw.delete', updateArea);
+                draw.on('draw.update', updateArea);
+
+                // Zone color change
+                document.getElementById("zoneColor").addEventListener('change', function(e) {
+                    const color = e.target.value;
+                    // Update draw styles with new color
+                    const newStyles = draw.options.styles.map(style => {
+                        if (style.paint) {
+                            if (style.paint['fill-color']) style.paint['fill-color'] = color;
+                            if (style.paint['fill-outline-color']) style.paint['fill-outline-color'] = color;
+                            if (style.paint['line-color']) style.paint['line-color'] = color;
+                            if (style.paint['circle-color'] && style.paint['circle-color'] !== 'rgba(255,255,255,1)') {
+                                style.paint['circle-color'] = color;
+                            }
+                        }
+                        return style;
+                    });
+                    
+                    // Remove and re-add draw control with new styles
+                    map.removeControl(draw);
+                    draw = new MapboxDraw({
+                        displayControlsDefault: false,
+                        styles: newStyles
+                    });
+                    map.addControl(draw);
+                });
+
+                // Set today's date as default
+                document.getElementById("reportDate").value = new Date().toISOString().split('T')[0];
+
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div style="background: rgba(255,0,0,0.1); padding: 30px; border-radius: 16px; border: 2px solid #ff6b6b;">
+                            <h2 style="color: #ff6b6b; margin-bottom: 20px;">⚠️ فشل تحميل الخريطة</h2>
+                            <p style="color: white; margin-bottom: 15px;">رسالة الخطأ: ${error.message}</p>
+                            <p style="color: white; margin-bottom: 15px;">يرجى التحقق من:</p>
+                            <ul style="text-align: right; color: white; margin-bottom: 20px;">
+                                <li>اتصال الإنترنت نشط</li>
+                                <li>السماح بتحميل محتوى Mapbox</li>
+                                <li>عدم وجود حاجب إعلانات يمنع التحميل</li>
+                                <li>فتح Console للمزيد من التفاصيل (F12)</li>
+                            </ul>
+                            <button onclick="location.reload()" style="
+                                background: #4CAF50;
+                                color: white;
+                                border: none;
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                cursor: pointer;
+                                font-family: 'Cairo', sans-serif;
+                                margin-left: 10px;
+                            ">إعادة المحاولة</button>
+                            <button onclick="enableSimpleMode()" style="
+                                background: #2196F3;
+                                color: white;
+                                border: none;
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                cursor: pointer;
+                                font-family: 'Cairo', sans-serif;
+                            ">تشغيل الوضع البسيط</button>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        const updateArea = () => {
+            const data = draw.getAll();
+            console.log('Draw data updated:', data);
+        };
+
+        // Alternative simple mode if Mapbox fails
+        window.enableSimpleMode = function() {
+            document.getElementById("loadingOverlay").style.display = 'none';
+            document.getElementById("map").innerHTML = `
+                <div style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100%;
+                    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+                    color: white;
+                    font-family: 'Cairo', sans-serif;
+                    padding: 20px;
+                    text-align: center;
+                ">
+                    <div>
+                        <h1 style="font-size: 36px; margin-bottom: 20px;">نظام مراقبة فنادق مكة</h1>
+                        <p style="font-size: 18px; margin-bottom: 30px;">النظام يعمل في الوضع البسيط</p>
+                        <p style="font-size: 16px; opacity: 0.8;">يمكنك استخدام النماذج على اليمين لإدخال البيانات</p>
+                    </div>
+                </div>
+            `;
+            
+            // Initialize basic functionality
+            updateStats();
+            document.getElementById("reportDate").value = new Date().toISOString().split('T')[0];
+        };
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMap);
+        } else {
+            initMap();
         }
-      }
-      return true;
-    }
 
-    function addReport(lngLat) {
-      const r = {
-        id: reportIdCounter++,
-        hotel: hotelName.value,
-        issue: issueType.value,
-        severity: severity.value,
-        date: reportDate.value,
-        note: notes.value,
-        lng: lngLat.lng,
-        lat: lngLat.lat
-      };
-      reports.push(r);
-      addMarker(r);
-      updateStats();
-      localStorage.setItem('hotelReports', JSON.stringify(reports));
-      showMessage('تم حفظ البلاغ بنجاح', 'success');
-      document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
-    }
-
-    function addMarker(r) {
-      const marker = new mapboxgl.Marker().setLngLat([r.lng, r.lat])
-        .setPopup(new mapboxgl.Popup().setHTML(`<strong>${r.hotel}</strong><br>نوع المشكلة: ${r.issue}<br>الخطورة: ${r.severity}<br>التاريخ: ${r.date}`))
-        .addTo(map);
-      markers.set(r.id, marker);
-    }
-
-    function updateStats() {
-      document.getElementById('totalReports').innerText = reports.length;
-    }
-
-    function showMessage(text, type) {
-      const msg = document.createElement('div');
-      msg.className = 'message-alert ' + (type === 'error' ? 'error-message' : 'success-message');
-      msg.textContent = text;
-      document.querySelector('.sidebar').appendChild(msg);
-      setTimeout(() => msg.remove(), 4000);
-    }
-
-    function exportToJSON() {
-      const blob = new Blob([JSON.stringify(reports, null, 2)], { type: 'application/json' });
-      saveAs(blob, 'hotel-reports.json');
-    }
-
-    function generateReport() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      doc.text(\"تقرير بلاغات الفنادق\", 10, 10);
-      reports.forEach((r, i) => {
-        doc.text(`${i + 1}) ${r.hotel} - ${r.issue} (${r.severity})`, 10, 20 + i * 10);
-      });
-      doc.save(\"hotel-report.pdf\");
-    }
-
-    function toggleHeatmap() {
-      if (map.getLayer(heatLayerId)) {
-        map.removeLayer(heatLayerId);
-        map.removeSource(heatLayerId);
-        heatmapVisible = false;
-      } else {
-        const features = reports.map(r => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [r.lng, r.lat] }
-        }));
-        map.addSource(heatLayerId, {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features }
-        });
-        map.addLayer({
-          id: heatLayerId,
-          type: 'heatmap',
-          source: heatLayerId,
-          paint: {
-            'heatmap-weight': 1,
-            'heatmap-intensity': 1,
-            'heatmap-radius': 20,
-            'heatmap-opacity': 0.8
-          }
-        });
-        heatmapVisible = true;
-      }
-    }
-
-    window.onload = () => {
-      document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
-      const saved = localStorage.getItem('hotelReports');
-      if (saved) {
-        reports = JSON.parse(saved);
-        reports.forEach(r => addMarker(r));
-        updateStats();
-      }
-    };
-  </script>
+        // Timeout handler - if map doesn't load within 10 seconds
+        setTimeout(() => {
+            if (document.getElementById("loadingOverlay").style.display !== 'none') {
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div style="background: rgba(255,0,0,0.1); padding: 30px; border-radius: 16px; border: 2px solid #ff6b6b;">
+                            <h2 style="color: #ff6b6b; margin-bottom: 20px;">⚠️ حدث خطأ في التحميل</h2>
+                            <p style="color: white; margin-bottom: 15px;">الأسباب المحتملة:</p>
+                            <ul style="text-align: right; color: white; margin-bottom: 20px;">
+                                <li>تحقق من اتصال الإنترنت</li>
+                                <li>قد يكون هناك حظر لـ Mapbox من المتصفح</li>
+                                <li>مفتاح API قد يكون غير صالح</li>
+                            </ul>
+                            <button onclick="location.reload()" style="
+                                background: #4CAF50;
+                                color: white;
+                                border: none;
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                cursor: pointer;
+                                font-family: 'Cairo', sans-serif;
+                                margin-left: 10px;
+                            ">إعادة المحاولة</button>
+                            <button onclick="enableSimpleMode()" style="
+                                background: #2196F3;
+                                color: white;
+                                border: none;
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                cursor: pointer;
+                                font-family: 'Cairo', sans-serif;
+                            ">تشغيل الوضع البسيط</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }, 10000);
+    </script>
 </body>
 </html>
